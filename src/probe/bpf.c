@@ -3,29 +3,45 @@
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>
 
+#define PNAME								"DATA INJECTOR P1:"
+
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
-unsigned page_size;
+__u8 data[32];
+__u32 size = 3; 
 
-void *base_page_size(void *pc) {
-	uintptr_t address = (uintptr_t)pc;
-	uintptr_t mask = ~((uintptr_t)page_size - 1);
-  return (void *)(address & mask);
-}
 
-SEC("uprobe/adder")
-int BPF_UPROBE(handler, int a, int b)
+/*
+ * Data injector UPROBE for modifying user memory data
+ * referenced by user pointers passed as function parameters.
+ */
+SEC("uprobe/dinjector")
+int BPF_UPROBE(handler)
 {
-	void *page_address;
-	void *pc = (void *)PT_REGS_IP(ctx);
-	void *bp = (void *)PT_REGS_FP(ctx);
-	int val = 20;
-	
-	page_address = base_page_size(pc);
+	void *regval;
+	/*
+	 * Using a local size variable for verifier's sanity.
+	 */
+	__u32 lsize = 1;
 
-	bpf_printk("BPF triggered. Passed parameters are %d and %d. " \
-	           "Program counter is %p, base page address is %p " \
-	           "with page size %u B\n", a, b,  pc, page_address, page_size);
-	bpf_probe_write_user(bp - 0x8, &val, sizeof(int));
+	/*
+	 * Assume parameter carries a pointer to user-space
+	 * memory location.
+	 */
+	regval = (void *) PT_REGS_PARM1(ctx);
+	if (!regval) {
+		bpf_printk(PNAME" BPF triggered. Size of data %d\n", size);
+		return 0;
+	}
+
+	/*
+	 * Ensure that at least 1 byte is set with maximum of 32 bytes.
+	 */
+	size &= (1 << 5) - 1;
+	lsize = size;
+	lsize = lsize | 1;
+
+	bpf_printk(PNAME" BPF triggered. Size of data %d\n", lsize);
+	bpf_probe_write_user(regval, (const void *) data, lsize);
 	return 0;
 }

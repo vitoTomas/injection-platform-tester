@@ -47,6 +47,7 @@ bpftool-clean:
 #
 
 BUILDDIR := build
+BUILDDIR_FULL := $(shell pwd)/$(BUILDDIR)
 BPF_SRC := src/probe
 BPF_OBJ := $(shell pwd)/$(BUILDDIR)/bpf.o
 
@@ -61,8 +62,35 @@ bpf-clean:
 	make OBJ=$(BPF_OBJ) -C src/probe clean;
 
 #
-# All targets.
-# 
+# Loader target.
+#
 
-clean: bpf-clean bpftool-clean libbpf-clean
+LOADER_OBJ := $(shell pwd)/$(BUILDDIR)/loader
+
+loader: bpf
+	make BUILD=y INCLUDE_BPF=$(LIBBPF_INCLUDE) INCLUDE_SKEL=$(BUILDDIR_FULL) \
+	LIB=$(LIBBPF_LIB)/libbpf.a OBJ=$(LOADER_OBJ) -C src/loader build
+
+loader-clean:
+	make OBJ=$(LOADER_OBJ) -C src/loader clean
+
+#
+# Test target.
+#
+
+TEST_OBJ := $(shell pwd)/build/test
+
+test:
+	make OBJ=$(TEST_OBJ) -C src/test build
+test-clean:
+	make OBJ=$(TEST_OBJ) -C src/test clean
+
+
+#
+# All targets.
+#
+
+all: bpf loader test
+
+clean: loader-clean bpf-clean bpftool-clean libbpf-clean
 	rm -rf $(BUILDDIR)
