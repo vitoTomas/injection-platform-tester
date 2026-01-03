@@ -55,7 +55,7 @@ bpf: libbpf bpftool
 	mkdir -p $(BUILDDIR)
 	make BUILD=y INCLUDE_BPF=$(LIBBPF_INCLUDE) \
 	INCLUDE_LINUX=$(BPFTOOL_INCLUDE) OBJ=$(BPF_OBJ) -C src/probe build;
-	bpftool gen skeleton $(BPF_OBJ) > \
+	./bpftool.ln gen skeleton $(BPF_OBJ) > \
 	$(BUILDDIR)/$(notdir $(basename $(BPF_OBJ))).h
 
 bpf-clean:

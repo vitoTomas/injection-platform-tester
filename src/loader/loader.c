@@ -44,8 +44,8 @@ int main(int argc, char *argv[])
 	printf("**** LOADING PROBE ****\n");
 	printf("**** ELF: %s\n", path);
 	printf("**** SYM ADDR: 0x%llx\n", sym_addr);
-	printf("**** DATA: %x\n", data[0]);
-	printf("**** DATA LEN: %d\n", data_length);
+	printf("**** DATA: 0x%x\n", data[0]);
+	printf("**** DATA LEN: %d B\n", data_length);
 
 	/*
 	 * Set up libbpf errors and debug info callback.
@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
 	link = bpf_program__attach_uprobe(skel->progs.handler,
 	                                  false,
 	                                  PID_ANY,
-	                                  PATH,
+	                                  path,
 	                                  sym_addr);
 	if (!link) {
     fprintf(stderr, "Failed to attach uprobe manually.\n");
