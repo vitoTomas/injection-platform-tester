@@ -13,12 +13,22 @@ endif
 endif
 
 CC := clang
-CFLAGS ?= -O2 -Wall -Werror -lelf -lz
-SRC ?= loader.c
-OBJ ?= loader
 
-build:
-	$(CC) $(CFLAGS) -I$(INCLUDE_BPF) -I$(INCLUDE_SKEL) $(SRC) $(LIB) -o $(OBJ)
+CFLAGS ?= -O2 -Wall -Werror -lelf -lz
+CFLAGS_LD ?= -O2 -Wall -Werror
+
+SRC ?= ipt.c
+SRC_LD ?= loader.c
+
+OBJ ?= ipt
+OBJ_LD ?= loader.o
+
+loader:
+	$(CC) $(CFLAGS_LD) -I$(INCLUDE_BPF) -I$(INCLUDE_SKEL) -c $(SRC_LD) -o $(OBJ_LD)
+
+build: loader
+	$(CC) $(CFLAGS) -I$(INCLUDE_BPF) -I$(INCLUDE_SKEL) $(SRC) $(OBJ_LD) $(LIB) -o $(OBJ)
 
 clean:
 	rm -f $(OBJ)
+	rm -f loader.o

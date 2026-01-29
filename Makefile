@@ -48,13 +48,14 @@ bpftool-clean:
 
 BUILDDIR := build
 BUILDDIR_FULL := $(shell pwd)/$(BUILDDIR)
-BPF_SRC := src/probe
-BPF_OBJ := $(shell pwd)/$(BUILDDIR)/bpf.o
+BPF_SRC := $(shell pwd)/src/probe/bpf_signal.c
+BPF_OBJ := $(shell pwd)/$(BUILDDIR)/bpf_signal.o
 
 bpf: libbpf bpftool
 	mkdir -p $(BUILDDIR)
 	make BUILD=y INCLUDE_BPF=$(LIBBPF_INCLUDE) \
-	INCLUDE_LINUX=$(BPFTOOL_INCLUDE) OBJ=$(BPF_OBJ) -C src/probe build;
+	INCLUDE_LINUX=$(BPFTOOL_INCLUDE) SRC=$(BPF_SRC) OBJ=$(BPF_OBJ) \
+	-C src/probe build;
 	./bpftool.ln gen skeleton $(BPF_OBJ) > \
 	$(BUILDDIR)/$(notdir $(basename $(BPF_OBJ))).h
 
@@ -65,7 +66,7 @@ bpf-clean:
 # Loader target.
 #
 
-LOADER_OBJ := $(shell pwd)/$(BUILDDIR)/loader
+LOADER_OBJ := $(shell pwd)/$(BUILDDIR)/ipt
 
 loader: bpf
 	make BUILD=y INCLUDE_BPF=$(LIBBPF_INCLUDE) INCLUDE_SKEL=$(BUILDDIR_FULL) \
@@ -79,12 +80,12 @@ loader-clean:
 #
 
 TEST_OBJ := $(shell pwd)/build/test
+TEST_INJ_OBJ := $(shell pwd)/build/injectable.so
 
 test:
-	make OBJ=$(TEST_OBJ) -C src/test build
+	make OBJ=$(TEST_OBJ) INJ_OBJ=$(TEST_INJ_OBJ) -C src/test build
 test-clean:
-	make OBJ=$(TEST_OBJ) -C src/test clean
-
+	make OBJ=$(TEST_OBJ) INJ_OBJ=$(TEST_INJ_OBJ) -C src/test clean
 
 #
 # All targets.
