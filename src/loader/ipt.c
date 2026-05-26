@@ -3,6 +3,7 @@
 #include <getopt.h>
 
 #include <string.h>
+#include <limits.h>
 #include <stdlib.h>
 
 #include "include/ipt.h"
@@ -52,7 +53,8 @@ int main(int argc, char *argv[])
                 rc = CODE_PARAM_PATH;
                 goto end;
             }
-            strncpy(ctx.tracee_path, optarg, PATH_MAX);
+
+            realpath(optarg, ctx.tracee_path);
             printf("**** TRACEE: %s\n", ctx.tracee_path);
             break;
         case 'r':
@@ -85,7 +87,8 @@ int main(int argc, char *argv[])
                 rc = CODE_PARAM_PATH;
                 goto end;
             }
-            strncpy(ctx.injectable_path, optarg, PATH_MAX);
+
+            realpath(optarg, ctx.injectable_path);
             printf("**** INJECTABLE: %s\n", ctx.injectable_path);
             break;
         case 'a':

@@ -1,9 +1,7 @@
 #ifndef _IPT_H_
 #define _IPT_H_
 
-#define PATH_MAX    256
 #define ARGS_MAX    32
-#define NAME_MAX    64
 
 enum Routine {
     INVAL = 0,

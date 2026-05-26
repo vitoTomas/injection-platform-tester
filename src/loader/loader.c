@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <errno.h>
 
@@ -17,10 +18,9 @@
 #include <bpf_signal.h>
 
 #include "include/ipt.h"
+#include "include/parser.h"
 
 #define PRELOAD  "LD_PRELOAD=%s"
-#define MAPS     "cat /proc/%d/maps"
-#define SIZE     (sizeof(MAPS) + 5)
 #define PID_ANY  -1
 
 static int _libbpf_print_fn(enum libbpf_print_level level, const char *format,
@@ -31,9 +31,9 @@ static int _libbpf_print_fn(enum libbpf_print_level level, const char *format,
         return vfprintf(stderr, format, args);
 }
 
-static int _load_bpf_routine_signal(enum Routine rte, const char *tracee_path,
-                                    const char *sym_name, unsigned long offset,
-                                    struct bpf_signal *skel)
+static int _load_bpf_routine(enum Routine rte, const char *tracee_path,
+                             const char *sym_name, unsigned long offset,
+                             void *skel)
 {
   /*
    * In this function, routine is referenced as a 'BPF program',
@@ -85,7 +85,7 @@ static int _load_bpf_routine_signal(enum Routine rte, const char *tracee_path,
   /*
    * Attach the probe to a perf event.
    */
-  link = bpf_program__attach_uprobe_opts(skel->progs.handler, PID_ANY,
+  link = bpf_program__attach_uprobe_opts(((struct bpf_signal *)skel)->progs.handler, PID_ANY,
                                          tracee_path, offset, &uopts);
   if (!link) {
     perror("bpf_attach_uprobe");
@@ -97,7 +97,7 @@ static int _load_bpf_routine_signal(enum Routine rte, const char *tracee_path,
   return CODE_OK;
 }
 
-static void _unload_bpf_signal_routine(struct bpf_signal *skel)
+static inline void _unload_bpf_routine(struct bpf_signal *skel)
 {
   bpf_signal__destroy(skel);
 }
@@ -109,9 +109,8 @@ static int _reroute_routine(const char *tracee_path, const char *inj_path,
   struct user_regs_struct regs;
   pid_t pid;
   char preload_expression[PATH_MAX + sizeof(PRELOAD)];
-  char maps_expression[SIZE];
   unsigned long sym_offset = 0; /* Offset from the function symbol. */
-  unsigned long page_address;
+  unsigned long target_address;
   int status;
   int rc;
 
@@ -143,16 +142,10 @@ static int _reroute_routine(const char *tracee_path, const char *inj_path,
   ptrace(PTRACE_CONT, pid, NULL, 0);
   waitpid(pid, &status, WUNTRACED);
 
-  snprintf(maps_expression, SIZE, MAPS, pid);
-  system(maps_expression);
+  target_address = get_target_function_address(pid, inj_path, sym_name);
+  printf("Target function address: 0x%lx\n", target_address);
 
-  printf("Enter page address: ");
-  scanf("%lx", &page_address);
-
-  printf("Address: %lx\n", page_address);
-
-  rc = _load_bpf_routine_signal(REROUTE, tracee_path, sym_name, sym_offset,
-                                skel);
+  rc = _load_bpf_routine(REROUTE, tracee_path, sym_name, sym_offset, skel);
   if (rc != CODE_OK)
     return rc;
 
@@ -165,7 +158,7 @@ static int _reroute_routine(const char *tracee_path, const char *inj_path,
 
   ptrace(PTRACE_GETREGS, pid, NULL, &regs);
   printf("Instruction pointer at probe time: 0x%llx\n", regs.rip);
-  regs.rip = page_address;
+  regs.rip = target_address;
   ptrace(PTRACE_SETREGS, pid, NULL, &regs);
 
   ptrace(PTRACE_CONT, pid, NULL, 0);
@@ -174,7 +167,7 @@ static int _reroute_routine(const char *tracee_path, const char *inj_path,
   while (true)
     sleep(1);
 
-  _unload_bpf_signal_routine(skel);
+  _unload_bpf_routine(skel);
 
   return CODE_OK;
 }
@@ -191,8 +184,7 @@ static int _param_routine(const char *tracee_path, const char *sym_name,
   int status;
   int rc;
   
-  rc = _load_bpf_routine_signal(REROUTE, tracee_path, sym_name, sym_offset,
-                                skel);
+  rc = _load_bpf_routine(REROUTE, tracee_path, sym_name, sym_offset, skel);
 
   /*
    * The idea is to (later) automatically detect which process stopped
