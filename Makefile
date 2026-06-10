@@ -33,7 +33,7 @@ BPFTOOL_BIN := $(shell pwd)/bpftool/out/bpftool
 
 bpftool:
 	mkdir -p $(BPFTOOL_OUTDIR) $(BPFTOOL_INCLUDE)
-	ln -s $(BPFTOOL_BIN) bpftool.ln
+	ln -fs $(BPFTOOL_BIN) bpftool.ln
 	make OUTPUT=$(BPFTOOL_OUTDIR) -C $(BPFTOOL_SRC)
 	cp $(BPFTOOL_VMLINUX) $(BPFTOOL_INCLUDE)
 	
@@ -50,16 +50,27 @@ BUILDDIR := build
 BUILDDIR_FULL := $(shell pwd)/$(BUILDDIR)
 BPF_SRC := $(shell pwd)/src/probe/bpf_signal.c
 BPF_OBJ := $(shell pwd)/$(BUILDDIR)/bpf_signal.o
+BPF_SRC_EXE := $(shell pwd)/src/probe/bpf_execve.c
+BPF_OBJ_EXE := $(shell pwd)/$(BUILDDIR)/bpf_execve.o
 
 bpf: libbpf bpftool
 	mkdir -p $(BUILDDIR)
 	make BUILD=y INCLUDE_BPF=$(LIBBPF_INCLUDE) \
 	INCLUDE_LINUX=$(BPFTOOL_INCLUDE) SRC=$(BPF_SRC) OBJ=$(BPF_OBJ) \
 	-C src/probe build;
+	make BUILD=y INCLUDE_BPF=$(LIBBPF_INCLUDE) \
+	INCLUDE_LINUX=$(BPFTOOL_INCLUDE) SRC=$(BPF_SRC_EXE) OBJ=$(BPF_OBJ_EXE) \
+	-C src/probe build;
 	./bpftool.ln gen skeleton $(BPF_OBJ) > \
 	$(BUILDDIR)/$(notdir $(basename $(BPF_OBJ))).h;
+	./bpftool.ln gen skeleton $(BPF_OBJ_EXE) > \
+	$(BUILDDIR)/$(notdir $(basename $(BPF_OBJ_EXE))).h;
+
 bpf-clean:
 	make OBJ=$(BPF_OBJ) -C src/probe clean;
+	make OBJ=$(BPF_OBJ_EXE) -C src/probe clean;
+	rm $(BUILDDIR)/$(notdir $(basename $(BPF_OBJ))).h;
+	rm $(BUILDDIR)/$(notdir $(basename $(BPF_OBJ_EXE))).h;
 
 #
 # Loader target.

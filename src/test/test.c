@@ -38,8 +38,5 @@ int main() {
          p1, p2, p3, p4, p5);
   param_printer(p1, p2, p3, p4, p5);
 
-  while (1)
-    sleep(1);
-
   return 0;
 }

@@ -6,6 +6,10 @@
 
 #include "include/parser.h"
 
+#define PNAME  "ipt parser:"
+
+extern int debug;
+
 static unsigned long get_base_address(const char *map_file,
                                       const char *so_path)
 {
@@ -36,8 +40,7 @@ static unsigned long get_base_address(const char *map_file,
   return 0L;
 }
 
-static unsigned long get_function_offset(const char *so_path,
-                                         const char *func_name)
+unsigned long get_function_offset(const char *so_path, const char *func_name)
 {
   int i, j;
   int count;
@@ -111,15 +114,21 @@ unsigned long get_target_function_address(pid_t pid,
   char maps_path[SIZE];
 
   snprintf(maps_path, SIZE, MAPS, pid);
-  printf("Attempting to open maps file: %s\n", maps_path);
+
+  if (debug)
+    printf(PNAME" Attempting to open maps file: %s\n", maps_path);
 
   base_address = get_base_address(maps_path, so_path);
   if (!base_address)
     return 0L;
 
-  offset = get_function_offset(so_path, "some_function");
+  offset = get_function_offset(so_path, func_name);
   if (!offset)
     return 0L;
+
+  if (debug)
+    printf(PNAME" Calculated function offset in destination ELF: 0x%lx\n",
+      offset);
   
   return base_address + offset;
 }

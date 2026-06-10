@@ -6,6 +6,8 @@
 #define LINE_SIZE    512
 #define PATH_SIZE    256
 
+unsigned long get_function_offset(const char *so_path, const char *func_name);
+
 unsigned long get_target_function_address(pid_t pid,
                                           const char *so_path,
                                           const char *func_name);
